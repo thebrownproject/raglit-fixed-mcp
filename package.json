@@ -1,22 +1,32 @@
 {
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.3",
-    "@supabase/supabase-js": "^2.49.4",
     "dotenv": "^16.5.0",
     "zod": "^3.24.4"
   },
   "name": "raglit",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "RagLit: An MCP server for document chunking, embedding, and retrieval for RAG pipelines via a REST API.",
+  "main": "dist/index.js",
+  "type": "module",
   "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc -w",
+    "lint": "eslint 'src/**/*.ts'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/thebrownproject/raglit-fixed-mcp.git"
   },
-  "keywords": [],
+  "keywords": [
+    "mcp",
+    "rag",
+    "chunking",
+    "llm",
+    "ai"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -25,6 +35,9 @@
   "homepage": "https://github.com/thebrownproject/raglit-fixed-mcp#readme",
   "devDependencies": {
     "@types/node": "^22.15.18",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
     "typescript": "^5.8.3"
   }
 }

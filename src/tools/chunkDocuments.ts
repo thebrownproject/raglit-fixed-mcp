@@ -9,7 +9,7 @@ import { loadConfig } from "../config.js";
 const config = loadConfig();
 
 // Initialize the repository for storing and managing chunks.
-// This uses a REST API backend.
+// This uses a REST API backend, consistent with other tools.
 const chunkRepository = new RestApiChunkRepository(
   config.api.baseUrl,
   config.api.apiKey
@@ -23,15 +23,15 @@ const chunkDocumentSchema = z.object({
     .int()
     .positive()
     .default(500)
-    .describe("The target size of each chunk in characters."),
+    .describe(
+      "The target size of each chunk in words (tokenized by whitespace)."
+    ),
   chunkOverlap: z
     .number()
     .int()
     .nonnegative()
     .default(50)
-    .describe(
-      "The number of characters to overlap between consecutive chunks."
-    ),
+    .describe("The number of words to overlap between consecutive chunks."),
   metadata: z
     .record(z.any())
     .optional()
@@ -40,8 +40,8 @@ const chunkDocumentSchema = z.object({
 
 /**
  * Defines the schema and handler for the 'chunk_document' tool.
- * This tool splits a given document into smaller, fixed-size chunks,
- * generates embeddings for each chunk, and stores them.
+ * This tool splits a given document into smaller, fixed-size chunks based on word count,
+ * generates embeddings for each chunk, and stores them via the configured REST API.
  */
 export const chunkDocumentTool = {
   /**
@@ -71,7 +71,7 @@ export const chunkDocumentTool = {
       // Perform the chunking operation on the document content.
       const chunks = chunker.chunk(content, metadata || {}); // Ensure metadata is an object if undefined
 
-      const chunkIds = [];
+      const chunkIds: (string | undefined)[] = []; // Ensure type allows for undefined IDs
       // Process and store each generated chunk.
       for (const chunk of chunks) {
         // Generate an embedding vector for the chunk's content.
@@ -88,10 +88,7 @@ export const chunkDocumentTool = {
           chunkStrategy: "fixed-size", // Strategy used for chunking
           metadata: chunk.metadata,
         });
-        if (chunkId) {
-          // Ensure chunkId is not undefined before pushing
-          chunkIds.push(chunkId);
-        }
+        chunkIds.push(chunkId); // Add chunkId (which might be undefined if API fails to return one)
       }
 
       // Return a success response with details about the processed chunks.
@@ -103,14 +100,17 @@ export const chunkDocumentTool = {
               success: true,
               documentId,
               chunks: chunks.length,
-              chunkIds,
+              chunkIds: chunkIds.filter((id) => id !== undefined), // Filter out undefined IDs for the response
             }),
           },
         ],
       };
     } catch (error: any) {
       // Catch any errors during the process
-      console.error("Error chunking document:", error);
+      console.error(
+        `Error in chunk_document tool for document ${documentId}:`,
+        error
+      );
 
       // Return an error response.
       return {
