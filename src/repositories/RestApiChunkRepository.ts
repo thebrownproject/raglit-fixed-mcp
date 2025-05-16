@@ -43,7 +43,7 @@ export class RestApiChunkRepository implements ChunkRepository {
     };
 
     if (this.apiKey) {
-      headers["Authorization"] = `Bearer ${this.apiKey}`;
+      headers["apikey"] = this.apiKey;
     }
 
     const response = await fetch(url, {
@@ -77,17 +77,17 @@ export class RestApiChunkRepository implements ChunkRepository {
    * @returns A Promise that resolves to the ID of the stored chunk, or undefined if the API response doesn't include an ID.
    */
   async storeChunk(params: StoreChunkParams): Promise<string | undefined> {
-    const response = await this.makeRequest("/chunks", "POST", params);
-    return response?.id; // Safely access id, as response might be undefined
+    const response = await this.makeRequest("/rest/v1/chunks", "POST", params);
+    return response?.[0]?.id;
   }
 
   /**
-   * Searches for similar chunks by sending a POST request to the "/chunks/search" endpoint.
+   * Searches for similar chunks by calling the 'match_chunks' RPC function.
    * @param embedding - The embedding vector to search for.
-   * @param limit - The maximum number of results to return. Defaults to 5.
-   * @param metadataFilter - Optional filter to apply based on chunk metadata. Defaults to an empty object.
-   * @param threshold - The similarity threshold for matching. Defaults to 0.7.
-   * @returns A Promise that resolves to an array of search results (chunks), or an empty array if no results or API issues.
+   * @param limit - The maximum number of results to return. This will be passed as 'match_count'.
+   * @param metadataFilter - Optional filter, specifically looking for 'documentId' to pass as 'p_document_id'.
+   * @param threshold - The similarity threshold for matching, passed as 'match_threshold'.
+   * @returns A Promise that resolves to an array of search results (chunks).
    */
   async searchSimilarChunks(
     embedding: number[],
@@ -95,29 +95,46 @@ export class RestApiChunkRepository implements ChunkRepository {
     metadataFilter: Record<string, any> = {},
     threshold = 0.7
   ): Promise<any[]> {
-    const response = await this.makeRequest("/chunks/search", "POST", {
-      embedding,
-      limit,
-      metadataFilter,
-      threshold,
-    });
-    return response?.results || []; // Safely access results, default to empty array
+    const rpcParams: Record<string, any> = {
+      query_embedding: embedding,
+      match_threshold: threshold,
+      match_count: limit,
+    };
+    if (metadataFilter.documentId) {
+      rpcParams.p_document_id = metadataFilter.documentId;
+    }
+
+    const response = await this.makeRequest(
+      "/rest/v1/rpc/match_chunks",
+      "POST",
+      rpcParams
+    );
+    return response || [];
   }
 
   /**
-   * Filters chunks by metadata by sending a POST request to the "/chunks/filter" endpoint.
-   * @param metadataFilter - The metadata key-value pairs to filter by.
-   * @param limit - The maximum number of results to return. Defaults to 10.
-   * @returns A Promise that resolves to an array of filtered chunks, or an empty array if no results or API issues.
+   * Filters chunks by metadata by calling the 'filter_chunks_by_meta' RPC function.
+   * @param metadataFilter - The metadata key-value pairs to filter by, passed as 'p_filter_metadata'.
+   * @param limit - The maximum number of results to return, passed as 'p_limit'.
+   * @returns A Promise that resolves to an array of filtered chunks.
    */
   async filterChunksByMetadata(
     metadataFilter: Record<string, any>,
     limit = 10
   ): Promise<any[]> {
-    const response = await this.makeRequest("/chunks/filter", "POST", {
-      metadataFilter,
-      limit,
-    });
-    return response?.results || []; // Safely access results, default to empty array
+    const rpcParams: Record<string, any> = {
+      p_filter_metadata: metadataFilter,
+      p_limit: limit,
+    };
+    if (metadataFilter.documentId) {
+      rpcParams.p_document_id = metadataFilter.documentId;
+    }
+
+    const response = await this.makeRequest(
+      "/rest/v1/rpc/filter_chunks_by_meta",
+      "POST",
+      rpcParams
+    );
+    return response || [];
   }
 }
