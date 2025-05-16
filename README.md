@@ -1,6 +1,6 @@
 # RagLit MCP Server
 
-**RagLit** is a Model Context Protocol (MCP) server designed to facilitate document processing and retrieval for Retrieval Augmented Generation (RAG) pipelines. It acts as an interface to an external REST API that handles the persistent storage of document chunks, vector search, and metadata filtering.
+**RagLit** is a Model Context Protocol (MCP) server designed to facilitate document processing and retrieval for Retrieval Augmented Generation (RAG) pipelines. It acts as an interface to an external REST API that handles the persistent storage of document chunks, vector search, and metadata filtering. This server can work with various backend databases, including PostgreSQL, as long as the REST API provides the necessary endpoints.
 
 ## Features
 
@@ -14,22 +14,22 @@
 
 ```
 src/
-├── index.ts                 # Main entry point for the server
-├── server.ts                # MCP server implementation and tool registration
-├── config.ts                # Configuration loading and validation
+├── index.ts                        # Main entry point for the server
+├── server.ts                       # MCP server implementation and tool registration
+├── config.ts                       # Configuration loading and validation
 ├── chunkers/
-│   └── fixedChunker.ts      # Fixed-size (word count) chunking logic
+│   └── fixedChunker.ts             # Fixed-size (word count) chunking logic
 ├── services/
-│   └── embedding.ts         # OpenAI embedding service integration
+│   └── embedding.ts                # OpenAI embedding service integration
 ├── repositories/
 │   ├── ChunkRepository.ts          # Interface for chunk storage and retrieval
-│   └── RestApiChunkRepository.ts # Implementation using a REST API backend
+│   └── RestApiChunkRepository.ts   # Implementation using a REST API backend
 └── tools/
-    ├── chunkDocuments.ts    # MCP tool to chunk and store documents
-    ├── searchChunks.ts      # MCP tool to search for relevant chunks
-    └── filterMetadata.ts    # MCP tool to filter chunks by metadata
+    ├── chunkDocuments.ts           # MCP tool to chunk and store documents
+    ├── searchChunks.ts             # MCP tool to search for relevant chunks
+    └── filterMetadata.ts           # MCP tool to filter chunks by metadata
 
-.env                         # Environment variable configuration (create this file)
+.env                                # Environment variable configuration (create this file)
 package.json
 tsconfig.json
 README.md
@@ -90,6 +90,14 @@ npm run build
 
 This will create a `dist` directory with the compiled JavaScript files.
 
+### Making the script executable (Optional)
+
+For some environments or if you plan to execute the script directly, you might want to give the main built script execute permissions:
+
+```bash
+chmod +x dist/index.js
+```
+
 ## Running the Server
 
 After building, you can start the MCP server:
@@ -106,6 +114,65 @@ You should see output similar to:
 Initializing RagLit MCP server...
 RagLit MCP server is running and ready to accept requests.
 ```
+
+## Integrating with Claude Desktop
+
+To use this MCP server with Claude Desktop, you need to add its configuration to the `claude_desktop_config.json` file.
+
+1.  **Locate `claude_desktop_config.json`:**
+
+    - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+    - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json` (e.g., `C:\Users\<YourUsername>\AppData\Roaming\Claude\claude_desktop_config.json`)
+    - **Linux:** `~/.config/Claude/claude_desktop_config.json`
+
+2.  **Edit the configuration file:**
+    Open `claude_desktop_config.json` in a text editor. Add the following entry within the `mcpServers` object. If `mcpServers` doesn't exist, create it. **Remember to replace `/<filepath>/` with the absolute path to your `raglit-fixed-mcp` project directory.**
+
+    ```json
+    {
+      "mcpServers": {
+        // ... other existing MCP server configurations ...
+
+        "raglit": {
+          "command": "node",
+          "args": [
+            "/<filepath>/raglit-fixed-mcp/dist/index.js" // <-- IMPORTANT: Replace /<filepath>/ with the actual absolute path
+          ],
+          "env": {
+            "API_BASE_URL": "http://localhost:3000", // Or your specific API endpoint
+            "OPENAI_API_KEY": "your_actual_openai_api_key_here" // <-- IMPORTANT: Use your actual OpenAI API key
+          }
+        }
+      }
+    }
+    ```
+
+    **Example for macOS if your project is in `~/Documents/Programming/portfolio/raglit/raglit-fixed-mcp`:**
+
+    ```json
+    // ...
+        "raglit": {
+          "command": "node",
+          "args": [
+            "/Users/yourusername/Documents/Programming/portfolio/raglit/raglit-fixed-mcp/dist/index.js"
+          ],
+          "env": {
+            "API_BASE_URL": "http://localhost:3000",
+            "OPENAI_API_KEY": "sk-yourActualOpenAIKey..."
+          }
+        }
+    // ...
+    ```
+
+3.  **Save the file and restart Claude Desktop.**
+    Your "raglit" MCP server should now be available in Claude Desktop.
+
+### Environment Variables for Claude Desktop Configuration:
+
+- `API_BASE_URL` (required): This is the base URL of the REST API that your `raglit` MCP server will use to perform its operations (like storing or searching chunks). This should point to the running instance of your backend RAG API (e.g., `http://localhost:3001/api` as per your `.env` setup, or `http://localhost:3000` if that's where your API is running).
+- `OPENAI_API_KEY` (required): Your secret API key provided by OpenAI. This key is necessary for your `raglit` server to make requests to OpenAI services, such as generating text embeddings.
+
+The `env` block in `claude_desktop_config.json` will provide these environment variables to the `raglit` process when launched by Claude Desktop. These values will take precedence over those defined in a `.env` file within the `raglit-fixed-mcp` project directory for the instance run by Claude.
 
 ## MCP Tools Provided
 
