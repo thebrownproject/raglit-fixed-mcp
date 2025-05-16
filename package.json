@@ -1,5 +1,30 @@
 {
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.3"
+    "@modelcontextprotocol/sdk": "^1.11.3",
+    "@supabase/supabase-js": "^2.49.4",
+    "dotenv": "^16.5.0",
+    "zod": "^3.24.4"
+  },
+  "name": "raglit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thebrownproject/raglit-fixed-mcp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/thebrownproject/raglit-fixed-mcp/issues"
+  },
+  "homepage": "https://github.com/thebrownproject/raglit-fixed-mcp#readme",
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "typescript": "^5.8.3"
   }
 }
