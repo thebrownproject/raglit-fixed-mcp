@@ -18,7 +18,7 @@ export async function main() {
             tools: {}, // Enables the tools capability, allowing the server to offer specific functionalities.
         },
     });
-    console.log("Initializing RagLit MCP server..."); // Updated log message
+    console.error("Initializing RagLit MCP server..."); // Updated log message
     // Register available tools with the server.
     // Each tool has a unique name, a schema defining its inputs/outputs, and a handler function.
     // Tool for chunking documents into smaller pieces.
@@ -32,11 +32,11 @@ export async function main() {
     const transport = new StdioServerTransport();
     // Connect the server to the transport layer to begin listening for and handling requests.
     await server.connect(transport);
-    console.log("RagLit MCP server is running and ready to accept requests." // Updated log message
+    console.error("RagLit MCP server is running and ready to accept requests." // Updated log message
     );
     // Set up a listener for the SIGINT signal (e.g., Ctrl+C) to gracefully shut down the server.
     process.on("SIGINT", () => {
-        console.log("Shutting down RagLit MCP server..."); // Updated log message
+        console.error("Shutting down RagLit MCP server..."); // Updated log message
         transport.close(); // Close the transport connection.
         process.exit(0); // Exit the process successfully.
     });
