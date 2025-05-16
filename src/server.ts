@@ -1,0 +1,1 @@
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";https://claude.ai/chat/124da48a-5705-4b57-b639-5dbc0f02f4f0
