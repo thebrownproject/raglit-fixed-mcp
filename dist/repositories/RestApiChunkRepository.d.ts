@@ -31,19 +31,19 @@ export declare class RestApiChunkRepository implements ChunkRepository {
      */
     storeChunk(params: StoreChunkParams): Promise<string | undefined>;
     /**
-     * Searches for similar chunks by sending a POST request to the "/chunks/search" endpoint.
+     * Searches for similar chunks by calling the 'match_chunks' RPC function.
      * @param embedding - The embedding vector to search for.
-     * @param limit - The maximum number of results to return. Defaults to 5.
-     * @param metadataFilter - Optional filter to apply based on chunk metadata. Defaults to an empty object.
-     * @param threshold - The similarity threshold for matching. Defaults to 0.7.
-     * @returns A Promise that resolves to an array of search results (chunks), or an empty array if no results or API issues.
+     * @param limit - The maximum number of results to return. This will be passed as 'match_count'.
+     * @param metadataFilter - Optional filter, specifically looking for 'documentId' to pass as 'p_document_id'.
+     * @param threshold - The similarity threshold for matching, passed as 'match_threshold'.
+     * @returns A Promise that resolves to an array of search results (chunks).
      */
     searchSimilarChunks(embedding: number[], limit?: number, metadataFilter?: Record<string, any>, threshold?: number): Promise<any[]>;
     /**
-     * Filters chunks by metadata by sending a POST request to the "/chunks/filter" endpoint.
-     * @param metadataFilter - The metadata key-value pairs to filter by.
-     * @param limit - The maximum number of results to return. Defaults to 10.
-     * @returns A Promise that resolves to an array of filtered chunks, or an empty array if no results or API issues.
+     * Filters chunks by metadata by calling the 'filter_chunks_by_meta' RPC function.
+     * @param metadataFilter - The metadata key-value pairs to filter by, passed as 'p_filter_metadata'.
+     * @param limit - The maximum number of results to return, passed as 'p_limit'.
+     * @returns A Promise that resolves to an array of filtered chunks.
      */
     filterChunksByMetadata(metadataFilter: Record<string, any>, limit?: number): Promise<any[]>;
 }

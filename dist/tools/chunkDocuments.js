@@ -8,7 +8,7 @@ import { loadConfig } from "../config.js";
 const config = loadConfig();
 // Initialize the repository for storing and managing chunks.
 // This uses a REST API backend, consistent with other tools.
-const chunkRepository = new RestApiChunkRepository(config.api.baseUrl, config.api.apiKey);
+const chunkRepository = new RestApiChunkRepository(config.postgrest.baseUrl, config.postgrest.apiKey);
 const chunkDocumentSchema = z.object({
     content: z.string().min(1, "Document content is required"),
     documentId: z.string().min(1, "Document ID is required"),

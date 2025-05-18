@@ -9,11 +9,11 @@ dotenv.config();
  * This interface ensures that all necessary configuration values are present and correctly typed.
  */
 export interface AppConfig {
-  /** Configuration for the main API used by the RestApiChunkRepository. */
-  api: {
-    /** The base URL of the API. This is a required environment variable (API_BASE_URL). */
+  /** Configuration for the external PostgREST API used by the RestApiChunkRepository. */
+  postgrest: {
+    /** The base URL of the PostgREST API. This is a required environment variable (EXTERNAL_API_URL). */
     baseUrl: string;
-    /** Optional API key for authenticating with the API (API_KEY). */
+    /** Optional API key for authenticating with the PostgREST API (EXTERNAL_API_KEY). */
     apiKey?: string;
   };
   /** Configuration for the embedding service (e.g., OpenAI). */
@@ -30,14 +30,14 @@ export interface AppConfig {
  * It checks for the presence of required variables and provides default values for optional ones.
  *
  * @returns An `AppConfig` object containing the loaded and validated configuration.
- * @throws Error if required environment variables (API_BASE_URL, OPENAI_API_KEY) are not set.
+ * @throws Error if required environment variables (EXTERNAL_API_URL, OPENAI_API_KEY) are not set.
  */
 export function loadConfig(): AppConfig {
-  // Validate and retrieve API_BASE_URL
-  const apiBaseUrl = process.env.API_BASE_URL;
-  if (!apiBaseUrl) {
+  // Validate and retrieve EXTERNAL_API_URL
+  const externalApiUrl = process.env.EXTERNAL_API_URL;
+  if (!externalApiUrl) {
     throw new Error(
-      "API_BASE_URL environment variable is required. This is the base URL for your chunk storage and search API."
+      "EXTERNAL_API_URL environment variable is required. This is the base URL for your PostgREST service."
     );
   }
 
@@ -51,9 +51,9 @@ export function loadConfig(): AppConfig {
 
   // Construct and return the configuration object
   return {
-    api: {
-      baseUrl: apiBaseUrl,
-      apiKey: process.env.API_KEY, // Optional: API key for the main API
+    postgrest: {
+      baseUrl: externalApiUrl,
+      apiKey: process.env.EXTERNAL_API_KEY, // Optional: API key for the PostgREST API
     },
     embedding: {
       apiKey: openAiApiKey, // Required: API key for OpenAI

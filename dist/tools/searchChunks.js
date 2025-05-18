@@ -5,7 +5,7 @@ import { loadConfig } from "../config.js";
 // Load application configuration
 const config = loadConfig();
 // Initialize the repository for chunk operations
-const chunkRepository = new RestApiChunkRepository(config.api.baseUrl, config.api.apiKey);
+const chunkRepository = new RestApiChunkRepository(config.postgrest.baseUrl, config.postgrest.apiKey);
 // Define the Zod schema for the searchChunksTool inputs
 const searchChunksSchema = z.object({
     query: z

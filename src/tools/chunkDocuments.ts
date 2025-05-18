@@ -11,8 +11,8 @@ const config = loadConfig();
 // Initialize the repository for storing and managing chunks.
 // This uses a REST API backend, consistent with other tools.
 const chunkRepository = new RestApiChunkRepository(
-  config.api.baseUrl,
-  config.api.apiKey
+  config.postgrest.baseUrl,
+  config.postgrest.apiKey
 );
 
 const chunkDocumentSchema = z.object({

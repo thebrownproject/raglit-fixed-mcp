@@ -8,8 +8,8 @@ const config = loadConfig();
 
 // Initialize the repository for chunk operations
 const chunkRepository = new RestApiChunkRepository(
-  config.api.baseUrl,
-  config.api.apiKey
+  config.postgrest.baseUrl,
+  config.postgrest.apiKey
 );
 
 // Define the Zod schema for the searchChunksTool inputs

@@ -4,7 +4,7 @@
 
 ## Features
 
-- **MCP Compliant**: Implements the Model Context Protocol for standardized communication.
+- **MCP Compliant**: Implements the Model Context Protocol for standardised communication.
 - **PostgREST Integration**: Specifically designed to work with PostgREST endpoints for database interaction.
 - **Document Ingestion**: Chunks documents, generates OpenAI embeddings, and sends them to a PostgREST backend for storage in a PostgreSQL database.
 - **Semantic Search**: Searches for relevant document chunks based on semantic similarity using `pgvector` capabilities, exposed via a PostgREST RPC function.
@@ -60,14 +60,22 @@ To use RagLit, your PostgreSQL database (exposed via PostgREST) needs the follow
     ```sql
     CREATE TABLE public.chunks (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        document_id TEXT NOT NULL,
-        text TEXT NOT NULL,
-        metadata JSONB,
-        embedding VECTOR(1536) -- Adjust 1536 to your embedding model's dimension (e.g., OpenAI text-embedding-ada-002 is 1536, text-embedding-3-small is 1536)
+        "documentId" TEXT NOT NULL,
+        content TEXT NOT NULL,
+        "chunkIndex" INTEGER NOT NULL,
+        "chunkSize" INTEGER NOT NULL,
+        "chunkOverlap" INTEGER NOT NULL,
+        "chunkStrategy" TEXT DEFAULT 'fixed-size' NOT NULL,
+        metadata JSONB DEFAULT '{}',
+        embedding VECTOR(1536)
     );
+
+    -- Create appropriate indexes for better performance
+    CREATE INDEX idx_chunks_document_id ON public.chunks ("documentId");
+    CREATE INDEX idx_chunks_metadata ON public.chunks USING GIN (metadata);
     ```
 
-    _(Note: If your PostgREST service uses a different schema than `public` for its exposed tables, adjust the table name accordingly in the function definitions below, e.g., `myschema.chunks`)_
+    IMPORTANT: Note the camelCase column names! The RagLit MCP implementation specifically expects these exact column names.
 
 3.  **Create SQL Functions for Search and Filter**:
 
@@ -75,17 +83,20 @@ To use RagLit, your PostgreSQL database (exposed via PostgREST) needs the follow
 
       ```sql
       CREATE OR REPLACE FUNCTION match_chunks (
-          query_embedding VECTOR(1536), -- Must match the dimension in your chunks table
+          query_embedding VECTOR(1536),
           match_threshold FLOAT,
-          match_count INT,
-          p_document_id TEXT DEFAULT NULL
+          match_count INT
       )
       RETURNS TABLE (
           id UUID,
-          document_id TEXT,
-          text TEXT,
+          "documentId" TEXT,
+          content TEXT,
+          "chunkIndex" INTEGER,
+          "chunkSize" INTEGER,
+          "chunkOverlap" INTEGER,
+          "chunkStrategy" TEXT,
           metadata JSONB,
-          embedding VECTOR(1536), -- Must match the dimension
+          embedding VECTOR(1536),
           similarity FLOAT
       )
       LANGUAGE plpgsql
@@ -94,14 +105,17 @@ To use RagLit, your PostgreSQL database (exposed via PostgREST) needs the follow
           RETURN QUERY
           SELECT
               chunks.id,
-              chunks.document_id,
-              chunks.text,
+              chunks."documentId",
+              chunks.content,
+              chunks."chunkIndex",
+              chunks."chunkSize",
+              chunks."chunkOverlap",
+              chunks."chunkStrategy",
               chunks.metadata,
               chunks.embedding,
-              1 - (chunks.embedding <=> query_embedding) AS similarity -- Cosine distance -> similarity
+              1 - (chunks.embedding <=> query_embedding) AS similarity
           FROM public.chunks
-          WHERE (p_document_id IS NULL OR chunks.document_id = p_document_id)
-            AND (1 - (chunks.embedding <=> query_embedding)) >= match_threshold
+          WHERE (1 - (chunks.embedding <=> query_embedding)) >= match_threshold
           ORDER BY chunks.embedding <=> query_embedding
           LIMIT match_count;
       END;
@@ -112,19 +126,41 @@ To use RagLit, your PostgreSQL database (exposed via PostgREST) needs the follow
       ```sql
       CREATE OR REPLACE FUNCTION filter_chunks_by_meta (
           p_filter_metadata JSONB,
-          p_limit INT,
-          p_document_id TEXT DEFAULT NULL
+          p_limit INT
       )
-      RETURNS SETOF public.chunks -- Returns rows matching the chunks table structure
-      LANGUAGE sql
+      RETURNS TABLE (
+          id UUID,
+          "documentId" TEXT,
+          content TEXT,
+          "chunkIndex" INTEGER,
+          "chunkSize" INTEGER,
+          "chunkOverlap" INTEGER,
+          "chunkStrategy" TEXT,
+          metadata JSONB,
+          embedding VECTOR(1536)
+      )
+      LANGUAGE plpgsql
       AS $$
-      SELECT *
-      FROM public.chunks
-      WHERE (p_document_id IS NULL OR chunks.document_id = p_document_id)
-        AND metadata @> p_filter_metadata -- '@>' JSONB operator: checks if left JSON contains right JSON
-      LIMIT p_limit;
+      BEGIN
+          RETURN QUERY
+          SELECT
+              c.id,
+              c."documentId",
+              c.content,
+              c."chunkIndex",
+              c."chunkSize",
+              c."chunkOverlap",
+              c."chunkStrategy",
+              c.metadata,
+              c.embedding
+          FROM public.chunks c
+          WHERE c.metadata @> p_filter_metadata
+          LIMIT p_limit;
+      END;
       $$;
       ```
+
+    Note: We use the table alias `c` in the `filter_chunks_by_meta` function to avoid column ambiguity errors with the parameter name.
 
     The `RestApiChunkRepository.ts` in this project is configured to call these specific table endpoints (`/rest/v1/chunks`) and RPC functions (`/rest/v1/rpc/match_chunks`, `/rest/v1/rpc/filter_chunks_by_meta`) with the specified parameter names.
 
@@ -295,6 +331,63 @@ RagLit exposes the following tools that can be called by an MCP client:
       - `metadataFilter: Record<string, any>` (Metadata object to filter by; at least one key-value pair required)
       - `limit?: number` (Maximum number of results to return, defaults to 10)
     - **Output**: JSON string with an array of matching chunk objects.
+
+## Common Issues and Troubleshooting
+
+### API Authentication Errors (401)
+
+If you encounter errors like:
+
+```json
+{
+  "message": "No API key found in request",
+  "hint": "No `apikey` request header or url param was found."
+}
+```
+
+Make sure your `EXTERNAL_API_KEY` environment variable is correctly set in both your `.env` file and the `claude_desktop_config.json` file. For Supabase, this is either the "anon" key or "service_role" key found in the API section of your project settings.
+
+### Schema Errors (400/404)
+
+If you encounter errors like:
+
+```json
+{
+  "code": "PGRST204",
+  "details": null,
+  "hint": null,
+  "message": "Could not find the 'chunkStrategy' column of 'chunks' in the schema cache"
+}
+```
+
+This indicates that your database schema doesn't match what the RagLit MCP expects. Make sure:
+
+- The table name is exactly `chunks` (or update the repository code if using a different name)
+- All column names match exactly, including case (camelCase as shown above)
+- The columns have the correct data types
+
+### Cache Refresh Issues
+
+Supabase and PostgREST cache the database schema. After making schema changes, you might need to:
+
+- Wait a few minutes for the cache to refresh
+- Restart your Supabase project if available
+- Make a small test insert to trigger a cache refresh
+
+### Function Not Found Errors
+
+If you encounter errors like:
+
+```json
+{
+  "code": "PGRST202",
+  "details": "Searched for the function public.match_chunks with parameters...",
+  "hint": "Perhaps you meant to call...",
+  "message": "Could not find the function..."
+}
+```
+
+Make sure the function names and parameter counts match exactly what's expected by the RagLit MCP. The functions must be defined in the `public` schema with the exact parameter names shown above.
 
 ## Development
 
